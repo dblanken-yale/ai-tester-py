@@ -3,7 +3,7 @@ import requests
 import yaml
 import json
 import argparse
-from datetime import datetime
+from datetime import datetime, timezone
 
 def get_questions(filename):
     with open(filename, 'r') as file:
@@ -22,7 +22,7 @@ def create_payload(question):
         "messages": [
             {
                 "id": str(uuid.uuid4()),
-                "date": datetime.utcnow().isoformat() + 'Z',
+                "date": datetime.now(timezone.utc).isoformat(),
                 "content": question,
                 **payload_template,
             },
