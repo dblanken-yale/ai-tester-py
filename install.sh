@@ -11,7 +11,7 @@ echo ""
 pip install -r requirements.txt
 
 echo ""
-print_green "Modify the `questions.yml` with questions you'd like to ask."
+print_green "Modify the \`questions.yml\` with questions you'd like to ask."
 print_green "These should be of the following format:"
 print_green "- Question 1"
 print_green "- Question 2"
