@@ -58,7 +58,7 @@ def main():
             for json_line in json_content_array if json_line['choices']
         ]
 
-        citations = [citation['content'] for citation in json.loads(joined_choice_messages[0])['citations']]
+        citations = [citation['url'] for citation in json.loads(joined_choice_messages[0])['citations']]
         messages = ''.join(joined_choice_messages[1:])
 
         json_output = {
