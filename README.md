@@ -14,6 +14,28 @@ This is a small python script to send multiple questions to an AI endpoint and a
   - Where `<url>` is the endpoint to test against
 - Usage can be seen by running `python test-questions.py -h`
 
+## Can I output to different formats?
+
+Yes, here is how:
+
+### JSON
+
+```bash
+python test-questions.py <url> > output.json
+```
+
+### JSON to file
+
+```bash
+python test-questions.py <url> --outfile output.json
+```
+
+### Excel to file
+
+```bash
+python test-questions.py <url> --format excel --outfile output.xlsx
+```
+
 ## How does it work?
 
-This will attempt to hit an endpoint with a multitude of questions stored inside of the questions.yml file, and output the question, citations, and response into a JSON-formatted output.
+This will attempt to hit an endpoint with a multitude of questions stored inside of the questions.yml file, and output the question, citations, and response into a readable output.
