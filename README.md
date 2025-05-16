@@ -36,6 +36,14 @@ python test-questions.py <url> --outfile output.json
 python test-questions.py <url> --format excel --outfile output.xlsx
 ```
 
+## I found an issue or want to know more
+
+You can enable debug mode to see more information; currently you'll be able to see this only in raw JSON output, and it currently supports showing all citation data.
+
+```bash
+python test-questions.py <url> --debug
+```
+
 ## How does it work?
 
 This will attempt to hit an endpoint with a multitude of questions stored inside of the questions.yml file, and output the question, citations, and response into a readable output.
