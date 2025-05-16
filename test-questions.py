@@ -53,6 +53,7 @@ def main():
     parser.add_argument('base_url', type=str, nargs='?', help='The base URL to send the questions to')
     parser.add_argument('--format', type=str, choices=['json', 'excel'], default='json', help='The format of the output')
     parser.add_argument('--outfile', type=str, help='The name of the output file')
+    parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
 
     if not args.base_url:
@@ -61,6 +62,7 @@ def main():
     base_url = args.base_url
     format = args.format if args.format else 'json'
     filename = args.outfile if args.outfile else None
+    debug = args.debug if args.debug else False
     options = {
         'format': format,
         'filename': filename
@@ -87,6 +89,12 @@ def main():
         ]
 
         citations = [citation['url'] for citation in json.loads(joined_choice_messages[0])['citations']]
+        citationsContents = []
+        if debug:
+            citationsContents = [
+                citation['content'] for citation in json.loads(joined_choice_messages[0])['citations']
+            ]
+
         messages = ''.join(joined_choice_messages[1:])
 
         json_output = {
@@ -94,6 +102,14 @@ def main():
             "answer": messages,
             "question": question
         }
+
+        if debug:
+            json_output = {
+                "citationsContents": citationsContents,
+                "citations": citations,
+                "answer": messages,
+                "question": question
+            }
         results.append(json_output)
 
     outputData(results, options)
