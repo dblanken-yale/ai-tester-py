@@ -178,7 +178,7 @@ pyrightconfig.json
 # All xslx, txt, and json files
 *.json
 *.txt
-*.xslx
+*.xlsx
 *.yml
 
 !questions.yml
