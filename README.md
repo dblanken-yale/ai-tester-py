@@ -67,4 +67,3 @@ The above will use your own questions file instead of the default `questions.yml
 ## How does it work?
 
 This will attempt to hit an endpoint with a multitude of questions stored inside of the questions.yml file, and output the question, citations, and response into a readable output.
-      i
