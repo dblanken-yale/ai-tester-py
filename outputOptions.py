@@ -17,9 +17,9 @@ def toJSON(results, options):
 def toExcel(content, options):
     """Converts the results to an Excel file and writes it to a file or prints it to the console."""
     df = pd.DataFrame(content)
-
     citations = pd.DataFrame(df['citations'].tolist())
-    df = df.drop('citations', axis=1).join(citations)
+    df = df.drop('citations', axis=1)
+    df = pd.concat([df[['question', 'answer']], citations], axis=1)
     df.columns = ['Question', 'Answer'] + [f'Cite {i+1}' for i in range(citations.shape[1])]
 
     if 'filename' in options and options['filename'] is not None:
