@@ -20,7 +20,7 @@ def toExcel(content, options):
 
     citations = pd.DataFrame(df['citations'].tolist())
     df = df.drop('citations', axis=1).join(citations)
-    df.columns = ['Answer', 'Question'] + [f'Cite {i+1}' for i in range(citations.shape[1])]
+    df.columns = ['Question', 'Answer'] + [f'Cite {i+1}' for i in range(citations.shape[1])]
 
     if 'filename' in options and options['filename'] is not None:
         filename = options['filename']
