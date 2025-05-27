@@ -57,7 +57,7 @@ def main():
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
 
-    questions_file = args.questions if args.questions else './questions.yml'
+    questions_file = args.questions
 
     if not args.base_url:
         parser.error("The base_url argument is required. Usage: python test-questions.py <base_url>")
