@@ -50,7 +50,7 @@ You can do this by running an included bash script:
 ./run_dir.sh <name_of_folder_with_yaml_files> <url>
 ```
 
-This will create a new directory named `<name_of_folder_with_yamle_files>_output`.  For instance, if you passed in a directory of `iyy`, it'd create `iyy_output`.
+This will create a new directory named `<name_of_folder_with_yaml_files>_output`.  For instance, if you passed in a directory of `iyy`, it'd create `iyy_output`.
 
 It would then create new files matching the yaml filenames but with an `.xlsx` extension in that directory.
 
