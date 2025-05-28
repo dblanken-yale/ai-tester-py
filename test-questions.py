@@ -6,22 +6,22 @@ import argparse
 from datetime import datetime, timezone
 import outputOptions
 
+
 def get_questions(filename):
     """Reads the questions from a file."""
-
     with open(filename, 'r') as file:
         return yaml.safe_load(file)
 
+
 def fetch_data(url, payload):
     """Fetches the data from the URL."""
-
     response = requests.post(url, json=payload)
     response.raise_for_status()
     return response.content
 
+
 def create_payload(question):
     """Creates the payload for the question."""
-
     payload_template = {
         "role": "user",
     }
@@ -36,19 +36,15 @@ def create_payload(question):
         ],
     }
 
-def outputData(content, options):
-    """Outputs the data in the desired format."""
 
-    outputFormat = outputOptions.toRaw
-    match options['format']:
-        case 'json':
-            outputFormat = outputOptions.toJSON
-        case 'excel':
-            outputFormat = outputOptions.toExcel
+def output_data(content, options):
+    """Outputs the data in the desired format using the output registry."""
+    output_func = outputOptions.get_output_function(options.get('format', 'raw'))
+    output_func(content, options)
 
-    outputFormat(content, options)
 
-def main():
+def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description='Process some questions.')
     parser.add_argument('base_url', type=str, nargs='?', help='The base URL to send the questions to')
     parser.add_argument('--questions', type=str, help='Path to the questions file (default: ./questions.yml)', default='./questions.yml')
@@ -56,66 +52,67 @@ def main():
     parser.add_argument('--outfile', type=str, help='The name of the output file')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
-
-    questions_file = args.questions
-
     if not args.base_url:
         parser.error("The base_url argument is required. Usage: python test-questions.py <base_url>")
+    return args
 
-    base_url = args.base_url
-    format = args.format if args.format else 'json'
-    filename = args.outfile if args.outfile else None
-    debug = args.debug if args.debug else False
+
+def process_question(question, url, debug=False):
+    """Process a single question and return the result dict."""
+    payload = create_payload(question)
+    buffer = fetch_data(url, payload)
+    content = buffer.decode('utf-8')
+    json_content_array = [
+        json.loads(line) for line in content.split('\n')
+        if line.strip() and line.strip() != '{}'
+    ]
+    joined_choice_messages = [
+        ''.join(line_obj['content'] for line_obj in json_line['choices'][0]['messages'])
+        for json_line in json_content_array if json_line['choices']
+    ]
+    citations = [citation['url'] for citation in json.loads(joined_choice_messages[0])['citations']]
+    citations_contents = []
+    if debug:
+        citations_contents = [
+            citation['content'] for citation in json.loads(joined_choice_messages[0])['citations']
+        ]
+    messages = ''.join(joined_choice_messages[1:])
+    json_output = {
+        "citations": citations,
+        "answer": messages,
+        "question": question
+    }
+    if debug:
+        json_output["citationsContents"] = citations_contents
+    return json_output
+
+
+def run(base_url, questions_file, output_format, filename=None, debug=False, endpoint='/conversation'):
+    """Main logic for processing questions and outputting results."""
     options = {
-        'format': format,
+        'format': output_format,
         'filename': filename
     }
-    conversation_endpoint = '/conversation'
-    url = base_url + conversation_endpoint
+    url = base_url + endpoint
     results = []
-
     questions = get_questions(questions_file)
-
     for question in questions:
-        payload = create_payload(question)
-        buffer = fetch_data(url, payload)
-        content = buffer.decode('utf-8')
+        result = process_question(question, url, debug=debug)
+        results.append(result)
+    output_data(results, options)
 
-        json_content_array = [
-            json.loads(line) for line in content.split('\n')
-            if line.strip() and line.strip() != '{}'
-        ]
 
-        joined_choice_messages = [
-            ''.join(line_obj['content'] for line_obj in json_line['choices'][0]['messages'])
-            for json_line in json_content_array if json_line['choices']
-        ]
+def main():
+    """Entry point for CLI usage."""
+    args = parse_args()
+    run(
+        base_url=args.base_url,
+        questions_file=args.questions,
+        output_format=args.format,
+        filename=args.outfile,
+        debug=args.debug
+    )
 
-        citations = [citation['url'] for citation in json.loads(joined_choice_messages[0])['citations']]
-        citationsContents = []
-        if debug:
-            citationsContents = [
-                citation['content'] for citation in json.loads(joined_choice_messages[0])['citations']
-            ]
-
-        messages = ''.join(joined_choice_messages[1:])
-
-        json_output = {
-            "citations": citations,
-            "answer": messages,
-            "question": question
-        }
-
-        if debug:
-            json_output = {
-                "citationsContents": citationsContents,
-                "citations": citations,
-                "answer": messages,
-                "question": question
-            }
-        results.append(json_output)
-
-    outputData(results, options)
 
 if __name__ == '__main__':
     main()
