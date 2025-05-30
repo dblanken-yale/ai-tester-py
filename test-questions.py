@@ -5,6 +5,12 @@ import json
 import argparse
 from datetime import datetime, timezone
 import outputOptions
+import time
+import os
+
+ERROR_LOG_FILE = '.error_log.jsonl'
+SUCCESS_LOG_FILE = '.success_log.jsonl'
+SUCCESS_LOG_META_FILE = '.success_log.meta.json'
 
 
 def get_questions(filename):
@@ -18,6 +24,20 @@ def fetch_data(url, payload):
     response = requests.post(url, json=payload)
     response.raise_for_status()
     return response.content
+
+
+def fetch_data_with_retry(url, payload, question, max_retries=3, delay=2):
+    """Fetches the data from the URL with retry logic. Logs errors if all retries fail."""
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.post(url, json=payload)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            if attempt == max_retries:
+                log_error(question, str(e))
+                return None
+            time.sleep(delay)
 
 
 def create_payload(question):
@@ -57,10 +77,60 @@ def parse_args():
     return args
 
 
+def log_error(question, error_message):
+    """Logs the error to a JSONL file with timestamp and question."""
+    with open(ERROR_LOG_FILE, 'a') as f:
+        f.write(json.dumps({
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+            'question': question,
+            'error': error_message
+        }) + '\n')
+
+
+def log_success(question):
+    """Logs the successful question to a JSONL file."""
+    with open(SUCCESS_LOG_FILE, 'a') as f:
+        f.write(json.dumps({'question': question}) + '\n')
+
+
+def load_successful_questions():
+    """Loads the set of successfully processed questions from the log file."""
+    if not os.path.exists(SUCCESS_LOG_FILE):
+        return set()
+    with open(SUCCESS_LOG_FILE, 'r') as f:
+        return set(json.loads(line)['question'] for line in f if line.strip())
+
+
+def get_run_metadata(base_url, questions_file, output_format, filename, debug, endpoint):
+    """Return a dict of the key parameters for this run."""
+    return {
+        'base_url': base_url,
+        'questions_file': os.path.abspath(questions_file),
+        'output_format': output_format,
+        'filename': filename,
+        'debug': debug,
+        'endpoint': endpoint
+    }
+
+
+def save_run_metadata(meta):
+    with open(SUCCESS_LOG_META_FILE, 'w') as f:
+        json.dump(meta, f)
+
+
+def load_run_metadata():
+    if not os.path.exists(SUCCESS_LOG_META_FILE):
+        return None
+    with open(SUCCESS_LOG_META_FILE, 'r') as f:
+        return json.load(f)
+
+
 def process_question(question, url, debug=False):
-    """Process a single question and return the result dict."""
+    """Process a single question and return the result dict, or None if failed."""
     payload = create_payload(question)
-    buffer = fetch_data(url, payload)
+    buffer = fetch_data_with_retry(url, payload, question)
+    if buffer is None:
+        return None
     content = buffer.decode('utf-8')
     json_content_array = [
         json.loads(line) for line in content.split('\n')
@@ -88,7 +158,9 @@ def process_question(question, url, debug=False):
 
 
 def run(base_url, questions_file, output_format, filename=None, debug=False, endpoint='/conversation'):
-    """Main logic for processing questions and outputting results."""
+    """Main logic for processing questions and outputting results. Skips already successful questions.
+    If all questions are successful, deletes the success log file and meta file.
+    If run parameters change, deletes old log and meta file."""
     options = {
         'format': output_format,
         'filename': filename
@@ -96,10 +168,36 @@ def run(base_url, questions_file, output_format, filename=None, debug=False, end
     url = base_url + endpoint
     results = []
     questions = get_questions(questions_file)
+    # Check run metadata
+    current_meta = get_run_metadata(base_url, questions_file, output_format, filename, debug, endpoint)
+    previous_meta = load_run_metadata()
+    if previous_meta != current_meta:
+        # New run parameters, clear logs
+        if os.path.exists(SUCCESS_LOG_FILE):
+            os.remove(SUCCESS_LOG_FILE)
+        if os.path.exists(SUCCESS_LOG_META_FILE):
+            os.remove(SUCCESS_LOG_META_FILE)
+        save_run_metadata(current_meta)
+        successful_questions = set()
+    else:
+        successful_questions = load_successful_questions()
+    all_success = True
     for question in questions:
+        if question in successful_questions:
+            continue  # Skip already successful
         result = process_question(question, url, debug=debug)
-        results.append(result)
+        if result is not None:
+            results.append(result)
+            log_success(question)
+        else:
+            all_success = False
     output_data(results, options)
+    # If all questions are successful, delete the success log file and meta file
+    if all_success and len(successful_questions) + len(results) == len(questions):
+        if os.path.exists(SUCCESS_LOG_FILE):
+            os.remove(SUCCESS_LOG_FILE)
+        if os.path.exists(SUCCESS_LOG_META_FILE):
+            os.remove(SUCCESS_LOG_META_FILE)
 
 
 def main():
