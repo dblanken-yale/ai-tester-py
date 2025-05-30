@@ -180,5 +180,6 @@ pyrightconfig.json
 *.txt
 *.xlsx
 *.yml
+*.zip
 
 !questions.yml
