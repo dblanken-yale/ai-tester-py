@@ -1,8 +1,6 @@
 # AI Tester
 
-## What is this?
-
-This is a small python script to send multiple questions to an AI endpoint and attempt to retrieve the responses for review.
+AI Tester is a tool for automating the testing of AI endpoints using configurable question sets and exporting results to various formats, including Excel.
 
 ## How to install?
 
@@ -43,6 +41,28 @@ You can enable debug mode to see more information; currently you'll be able to s
 ```bash
 python test-questions.py <url> --debug
 ```
+
+## I'd like to run a lot of different sets of questions
+
+You can do this by running an included bash script:
+
+```bash
+./run_dir.sh <name_of_folder_with_yaml_files> <url>
+```
+
+This will create a new directory named `<name_of_folder_with_yaml_files>_output`.  For instance, if you passed in a directory of `iyy`, it'd create `iyy_output`.
+
+It would then create new files matching the yaml filenames but with an `.xlsx` extension in that directory.
+
+## I'd like to specify my own questions
+
+You don't have to use questions.yml, you can specify your own questions file by using the `--questions` flag:
+
+```bash
+python test-questions.py <url> --questions my_questions.yml
+```
+
+The above will use your own questions file instead of the default `questions.yml`.
 
 ## How does it work?
 
