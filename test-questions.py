@@ -51,10 +51,13 @@ def outputData(content, options):
 def main():
     parser = argparse.ArgumentParser(description='Process some questions.')
     parser.add_argument('base_url', type=str, nargs='?', help='The base URL to send the questions to')
+    parser.add_argument('--questions', type=str, help='Path to the questions file (default: ./questions.yml)', default='./questions.yml')
     parser.add_argument('--format', type=str, choices=['json', 'excel'], default='json', help='The format of the output')
     parser.add_argument('--outfile', type=str, help='The name of the output file')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
+
+    questions_file = args.questions
 
     if not args.base_url:
         parser.error("The base_url argument is required. Usage: python test-questions.py <base_url>")
@@ -71,7 +74,7 @@ def main():
     url = base_url + conversation_endpoint
     results = []
 
-    questions = get_questions('./questions.yml')
+    questions = get_questions(questions_file)
 
     for question in questions:
         payload = create_payload(question)
