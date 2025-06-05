@@ -1,80 +1,10 @@
-import uuid
-import requests
-import yaml
 import json
-from datetime import datetime, timezone
 import logging
 import azure.functions as func
 import os
+from processor import QuestionProcessor, ValidationError
 
 
-class QuestionProcessor:
-    def __init__(self, base_url, endpoint='/conversation', debug=False):
-        self.base_url = base_url
-        self.endpoint = endpoint
-        self.debug = debug
-        self.url = base_url + endpoint
-
-    def get_questions_from_body(self, questions_data):
-        """Reads the questions from a JSON array or YAML string in the request body."""
-        if isinstance(questions_data, list):
-            return questions_data
-        if isinstance(questions_data, str):
-            return yaml.safe_load(questions_data)
-        raise ValueError("Questions must be a list or YAML string.")
-
-    def fetch_data(self, payload):
-        response = requests.post(self.url, json=payload)
-        response.raise_for_status()
-        return response.content
-
-    def create_payload(self, question):
-        payload_template = {"role": "user"}
-        return {
-            "messages": [
-                {
-                    "id": str(uuid.uuid4()),
-                    "date": datetime.now(timezone.utc).isoformat(),
-                    "content": question,
-                    **payload_template,
-                },
-            ],
-        }
-
-    def process_question(self, question):
-        try:
-            payload = self.create_payload(question)
-            buffer = self.fetch_data(payload)
-            content = buffer.decode('utf-8')
-            json_content_array = [
-                json.loads(line) for line in content.split('\n')
-                if line.strip() and line.strip() != '{}'
-            ]
-            joined_choice_messages = [
-                ''.join(line_obj['content'] for line_obj in json_line['choices'][0]['messages'])
-                for json_line in json_content_array if json_line['choices']
-            ]
-            citations = [citation['url'] for citation in json.loads(joined_choice_messages[0])['citations']]
-            citations_contents = []
-            if self.debug:
-                citations_contents = [
-                    citation['content'] for citation in json.loads(joined_choice_messages[0])['citations']
-                ]
-            messages = ''.join(joined_choice_messages[1:])
-            json_output = {
-                "citations": citations,
-                "answer": messages,
-                "question": question
-            }
-            if self.debug:
-                json_output["citationsContents"] = citations_contents
-            return json_output
-        except Exception as e:
-            logging.exception(f"Failed to process question: {question}")
-            return {"question": question, "error": str(e)}
-
-    def process_questions(self, questions):
-        return [self.process_question(q) for q in questions]
 
 
 class OutputFormatter:
@@ -126,26 +56,37 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
     base_url = req_json.get('base_url')
     questions_data = req_json.get('questions')
     debug = req_json.get('debug', False)
-    endpoint = req_json.get('endpoint', '/conversation')
+    endpoint = req_json.get('endpoint')
     output_format = req_json.get('format', 'json')
+    
     if not base_url or not questions_data:
         return func.HttpResponse(
             json.dumps({"error": "'base_url' and 'questions' are required in the request body."}),
             status_code=400,
             mimetype="application/json"
         )
-    processor = QuestionProcessor(base_url, endpoint=endpoint, debug=debug)
+    
     try:
+        processor = QuestionProcessor(base_url, endpoint=endpoint, debug=debug)
         questions = processor.get_questions_from_body(questions_data)
-    except Exception as e:
+        results = processor.process_questions(questions)
+    except ValidationError as e:
         return func.HttpResponse(
-            json.dumps({"error": f"Failed to parse questions: {e}"}),
+            json.dumps({"error": f"Validation error: {e}"}),
             status_code=400,
             mimetype="application/json"
         )
-    results = processor.process_questions(questions)
+    except Exception as e:
+        logging.exception("Failed to process questions")
+        return func.HttpResponse(
+            json.dumps({"error": f"Failed to process questions: {e}"}),
+            status_code=500,
+            mimetype="application/json"
+        )
+    
     formatter = OutputFormatter(output_format)
     formatted = formatter.format(results)
+    
     if output_format == 'excel':
         return func.HttpResponse(
             formatted,

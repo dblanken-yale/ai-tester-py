@@ -63,11 +63,11 @@ def resize_excel(filename: str) -> None:
     """Resizes the columns and rows in the Excel file."""
     workbook = load_workbook(filename)
     sheet = workbook.active
-    sheet.column_dimensions['B'].width = 140
-    sheet.column_dimensions['C'].width = 30
+    sheet.column_dimensions['A'].width = 140
+    sheet.column_dimensions['B'].width = 30
     for row in sheet.iter_rows():
         for cell in row:
-            if cell.column_letter in ['B', 'C']:
+            if cell.column_letter in ['A', 'B']:
                 cell.alignment = Alignment(vertical='top', wrap_text=True)
                 sheet.row_dimensions[cell.row].height = None
             else:

@@ -1,10 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-# Hidden dotfiles for logs
-SUCCESS_LOG_FILE=".run_dir_success_log.jsonl"
-SUCCESS_LOG_META_FILE=".run_dir_success_log.meta.json"
-ERROR_LOG_FILE=".run_dir_error_log.jsonl"
+# Get log file paths from config
+get_config_value() {
+  python3 -c "import config; cfg = config.get_config(); print(cfg['$1'])"
+}
+
+SUCCESS_LOG_FILE=$(get_config_value "run_dir_success_log_file")
+SUCCESS_LOG_META_FILE=$(get_config_value "run_dir_success_log_meta_file")
+ERROR_LOG_FILE=$(get_config_value "run_dir_error_log_file")
 
 usage() {
   echo "Usage: $0 <directory> <url> [other_python_args]"
