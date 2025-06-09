@@ -1,118 +1,174 @@
-import uuid
-import requests
-import yaml
 import json
 import argparse
-from datetime import datetime, timezone
 import outputOptions
+import time
+import os
+import logging
+from processor import QuestionProcessor, ValidationError
+import config
+
+
 
 def get_questions(filename):
     """Reads the questions from a file."""
+    processor = QuestionProcessor('dummy')
+    return processor.get_questions_from_file(filename)
 
-    with open(filename, 'r') as file:
-        return yaml.safe_load(file)
 
-def fetch_data(url, payload):
-    """Fetches the data from the URL."""
 
-    response = requests.post(url, json=payload)
-    response.raise_for_status()
-    return response.content
 
-def create_payload(question):
-    """Creates the payload for the question."""
 
-    payload_template = {
-        "role": "user",
-    }
-    return {
-        "messages": [
-            {
-                "id": str(uuid.uuid4()),
-                "date": datetime.now(timezone.utc).isoformat(),
-                "content": question,
-                **payload_template,
-            },
-        ],
-    }
 
-def outputData(content, options):
-    """Outputs the data in the desired format."""
+def output_data(content, options):
+    """Outputs the data in the desired format using the output registry."""
+    output_func = outputOptions.get_output_function(options.get('format', 'raw'))
+    output_func(content, options)
 
-    outputFormat = outputOptions.toRaw
-    match options['format']:
-        case 'json':
-            outputFormat = outputOptions.toJSON
-        case 'excel':
-            outputFormat = outputOptions.toExcel
 
-    outputFormat(content, options)
-
-def main():
+def parse_args():
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser(description='Process some questions.')
     parser.add_argument('base_url', type=str, nargs='?', help='The base URL to send the questions to')
+    parser.add_argument('--questions', type=str, help='Path to the questions file (default: ./questions.yml)', default='./questions.yml')
     parser.add_argument('--format', type=str, choices=['json', 'excel'], default='json', help='The format of the output')
     parser.add_argument('--outfile', type=str, help='The name of the output file')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     args = parser.parse_args()
-
     if not args.base_url:
         parser.error("The base_url argument is required. Usage: python test-questions.py <base_url>")
+    return args
 
-    base_url = args.base_url
-    format = args.format if args.format else 'json'
-    filename = args.outfile if args.outfile else None
-    debug = args.debug if args.debug else False
+
+def log_error(question, error_message):
+    """Logs the error to a JSONL file with timestamp and question."""
+    cfg = config.get_config()
+    with open(cfg['error_log_file'], 'a') as f:
+        f.write(json.dumps({
+            'timestamp': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
+            'question': question,
+            'error': error_message
+        }) + '\n')
+
+
+def log_success(question):
+    """Logs the successful question to a JSONL file."""
+    cfg = config.get_config()
+    with open(cfg['success_log_file'], 'a') as f:
+        f.write(json.dumps({'question': question}) + '\n')
+
+
+def load_successful_questions():
+    """Loads the set of successfully processed questions from the log file."""
+    cfg = config.get_config()
+    if not os.path.exists(cfg['success_log_file']):
+        return set()
+    with open(cfg['success_log_file'], 'r') as f:
+        return set(json.loads(line)['question'] for line in f if line.strip())
+
+
+def get_run_metadata(base_url, questions_file, output_format, filename, debug, endpoint):
+    """Return a dict of the key parameters for this run."""
+    return {
+        'base_url': base_url,
+        'questions_file': os.path.abspath(questions_file),
+        'output_format': output_format,
+        'filename': filename,
+        'debug': debug,
+        'endpoint': endpoint
+    }
+
+
+def save_run_metadata(meta):
+    cfg = config.get_config()
+    with open(cfg['success_log_meta_file'], 'w') as f:
+        json.dump(meta, f)
+
+
+def load_run_metadata():
+    cfg = config.get_config()
+    if not os.path.exists(cfg['success_log_meta_file']):
+        return None
+    with open(cfg['success_log_meta_file'], 'r') as f:
+        return json.load(f)
+
+
+
+
+def run(base_url, questions_file, output_format, filename=None, debug=False, endpoint=None):
+    """Main logic for processing questions and outputting results. Skips already successful questions.
+    If all questions are successful, deletes the success log file and meta file.
+    If run parameters change, deletes old log and meta file."""
+    cfg = config.get_config()
+    if endpoint is None:
+        endpoint = cfg['default_endpoint']
+    
     options = {
-        'format': format,
+        'format': output_format,
         'filename': filename
     }
-    conversation_endpoint = '/conversation'
-    url = base_url + conversation_endpoint
+    
+    try:
+        processor = QuestionProcessor(base_url, endpoint, debug)
+        questions = processor.get_questions_from_file(questions_file)
+    except ValidationError as e:
+        logging.error(f"Validation error: {e}")
+        return
+    except Exception as e:
+        logging.error(f"Failed to initialize processor: {e}")
+        return
+    
+    # Check run metadata
+    current_meta = get_run_metadata(base_url, questions_file, output_format, filename, debug, endpoint)
+    previous_meta = load_run_metadata()
+    if previous_meta != current_meta:
+        # New run parameters, clear logs
+        if os.path.exists(cfg['success_log_file']):
+            os.remove(cfg['success_log_file'])
+        if os.path.exists(cfg['success_log_meta_file']):
+            os.remove(cfg['success_log_meta_file'])
+        save_run_metadata(current_meta)
+        successful_questions = set()
+    else:
+        successful_questions = load_successful_questions()
+    
     results = []
-
-    questions = get_questions('./questions.yml')
-
+    all_success = True
+    
     for question in questions:
-        payload = create_payload(question)
-        buffer = fetch_data(url, payload)
-        content = buffer.decode('utf-8')
+        if question in successful_questions:
+            continue  # Skip already successful
+        
+        result = processor.process_question_with_retry(question)
+        if result is not None and 'error' not in result:
+            results.append(result)
+            log_success(question)
+        elif result is not None and 'error' in result:
+            log_error(question, result['error'])
+            all_success = False
+        else:
+            all_success = False
+    
+    output_data(results, options)
+    
+    # If all questions are successful, delete the success log file and meta file
+    if all_success and len(successful_questions) + len(results) == len(questions):
+        if os.path.exists(cfg['success_log_file']):
+            os.remove(cfg['success_log_file'])
+        if os.path.exists(cfg['success_log_meta_file']):
+            os.remove(cfg['success_log_meta_file'])
 
-        json_content_array = [
-            json.loads(line) for line in content.split('\n')
-            if line.strip() and line.strip() != '{}'
-        ]
 
-        joined_choice_messages = [
-            ''.join(line_obj['content'] for line_obj in json_line['choices'][0]['messages'])
-            for json_line in json_content_array if json_line['choices']
-        ]
+def main():
+    """Entry point for CLI usage."""
+    args = parse_args()
+    run(
+        base_url=args.base_url,
+        questions_file=args.questions,
+        output_format=args.format,
+        filename=args.outfile,
+        debug=args.debug
+    )
 
-        citations = [citation['url'] for citation in json.loads(joined_choice_messages[0])['citations']]
-        citationsContents = []
-        if debug:
-            citationsContents = [
-                citation['content'] for citation in json.loads(joined_choice_messages[0])['citations']
-            ]
-
-        messages = ''.join(joined_choice_messages[1:])
-
-        json_output = {
-            "citations": citations,
-            "answer": messages,
-            "question": question
-        }
-
-        if debug:
-            json_output = {
-                "citationsContents": citationsContents,
-                "citations": citations,
-                "answer": messages,
-                "question": question
-            }
-        results.append(json_output)
-
-    outputData(results, options)
 
 if __name__ == '__main__':
     main()
