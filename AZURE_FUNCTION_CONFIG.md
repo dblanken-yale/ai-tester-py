@@ -6,7 +6,7 @@ This document describes the environment variables available for configuring the 
 
 ### AI_TESTER_BASE_URL
 - **Description**: Base URL of the AI endpoint to send questions to
-- **Default**: `https://askyalemytest.azurewebsites.net`
+- **Default**: `https://your-ai-endpoint.example.com`
 - **Example**: `https://your-ai-endpoint.azurewebsites.net`
 
 ## Question Source Configuration
@@ -94,10 +94,12 @@ For local development, set these variables in `local.settings.json`:
   "Values": {
     "AzureWebJobsStorage": "",
     "FUNCTIONS_WORKER_RUNTIME": "python",
-    "AI_TESTER_BASE_URL": "https://askyalemytest.azurewebsites.net",
+    "AI_TESTER_BASE_URL": "https://your-ai-endpoint.example.com",
     "AI_TESTER_QUESTIONS_SOURCE_TYPE": "yaml",
     "AI_TESTER_QUESTIONS_FILE": "./questions.yml",
-    "AI_TESTER_OUTPUT_FORMAT": "json",
+    "AI_TESTER_OUTPUT_DESTINATION_TYPE": "json",
+    "AI_TESTER_OUTPUT_FILE": "./results.json",
+    "AI_TESTER_JSON_PRETTY_PRINT": "true",
     "AI_TESTER_DEBUG": "false"
   }
 }
