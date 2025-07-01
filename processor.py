@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional
 from urllib.parse import urlparse
 import config
+from question_sources import QuestionSource, QuestionSourceFactory
 
 logger = logging.getLogger(__name__)
 
@@ -19,12 +20,14 @@ class ValidationError(Exception):
 class QuestionProcessor:
     """Handles processing of questions against AI endpoints."""
     
-    def __init__(self, base_url: str, endpoint: str = None, debug: bool = False):
+    def __init__(self, base_url: str, endpoint: str = None, debug: bool = False, 
+                 question_source: QuestionSource = None):
         self.config = config.get_config()
         self.base_url = self._validate_url(base_url)
         self.endpoint = endpoint or self.config['default_endpoint']
         self.debug = debug
         self.url = self.base_url + self.endpoint
+        self.question_source = question_source
         
         # Configure logging
         logging.basicConfig(
@@ -83,6 +86,28 @@ class QuestionProcessor:
             raise ValidationError(f"Questions file not found: {filename}")
         except yaml.YAMLError as e:
             raise ValidationError(f"Invalid YAML in {filename}: {e}")
+    
+    def get_questions_from_source(self) -> List[str]:
+        """Get questions from the configured question source."""
+        if self.question_source is None:
+            raise ValidationError("No question source configured")
+        
+        try:
+            questions = self.question_source.get_questions()
+            return self.get_questions_from_body(questions)
+        except Exception as e:
+            source_info = self.question_source.get_source_info()
+            raise ValidationError(f"Failed to get questions from {source_info.get('type', 'unknown')} source: {e}")
+    
+    def set_question_source(self, source: QuestionSource):
+        """Set the question source for this processor."""
+        self.question_source = source
+    
+    def create_question_source(self, source_type: str, **kwargs) -> QuestionSource:
+        """Create and set a question source using the factory."""
+        source = QuestionSourceFactory.create_source(source_type, **kwargs)
+        self.set_question_source(source)
+        return source
 
     def create_payload(self, question: str) -> Dict[str, Any]:
         """Create request payload for a question."""
