@@ -204,60 +204,56 @@ class PostgreSQLDestination(OutputDestination):
         self.table_name = table_name
         self.create_table = create_table
         
-        # TODO: Add actual PostgreSQL connection logic
-        # import psycopg2
-        # self.connection = psycopg2.connect(connection_string)
+        # Validate connection string is provided
+        if not connection_string:
+            raise ValueError("PostgreSQL connection string is required")
     
     def write_results(self, results: List[Dict[str, Any]], metadata: Optional[Dict[str, Any]] = None) -> bool:
         """
         Write results to PostgreSQL database.
         
-        Note: This is a placeholder implementation.
-        In a real implementation, this would insert data into the database.
+        This is a stub implementation. Add actual database connection and insertion logic here.
+        
+        Example implementation would:
+        1. Connect to PostgreSQL using psycopg2 or asyncpg
+        2. Create table if create_table=True and table doesn't exist
+        3. Insert each result as a row with proper data types
+        4. Handle errors gracefully and log appropriately
+        
+        Args:
+            results: List of result dictionaries to insert
+            metadata: Optional metadata about the test run
+            
+        Returns:
+            bool: True if write was successful, False otherwise
         """
         try:
-            # TODO: Implement actual database insertion
-            # cursor = self.connection.cursor()
-            # 
-            # if self.create_table:
-            #     cursor.execute(f"""
-            #         CREATE TABLE IF NOT EXISTS {self.table_name} (
-            #             id SERIAL PRIMARY KEY,
-            #             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            #             question TEXT NOT NULL,
-            #             answer TEXT,
-            #             citations JSONB,
-            #             metadata JSONB,
-            #             run_metadata JSONB
-            #         )
-            #     """)
-            # 
-            # for result in results:
-            #     cursor.execute(f"""
-            #         INSERT INTO {self.table_name} 
-            #         (question, answer, citations, metadata, run_metadata)
-            #         VALUES (%s, %s, %s, %s, %s)
-            #     """, (
-            #         result.get('question'),
-            #         result.get('answer'),
-            #         json.dumps(result.get('citations', [])),
-            #         json.dumps(result),
-            #         json.dumps(metadata)
-            #     ))
-            # 
-            # self.connection.commit()
-            # cursor.close()
+            # TODO: Implement actual PostgreSQL connection and insertion
+            # This stub logs what would be written for development/testing
             
-            # Placeholder logging for now
-            logger.info(f"PostgreSQL destination would write {len(results)} results to table {self.table_name}")
+            logger.info(f"PostgreSQL stub: would write {len(results)} results to table '{self.table_name}'")
             logger.info(f"Connection string configured: {bool(self.connection_string)}")
+            
             if metadata:
-                logger.info(f"Metadata would be included: {list(metadata.keys())}")
+                logger.info(f"Run metadata would be included: {list(metadata.keys())}")
+            
+            # Log sample data structure for first result (if any)
+            if results:
+                sample_result = results[0]
+                logger.info(f"Sample result structure: {list(sample_result.keys())}")
+            
+            # In a real implementation, you would:
+            # - Import psycopg2 or asyncpg
+            # - Connect to database
+            # - Create table with appropriate schema
+            # - Insert results with proper SQL
+            # - Handle transactions and rollbacks
+            # - Return actual success status
             
             return True
             
         except Exception as e:
-            logger.error(f"Failed to write results to PostgreSQL: {e}")
+            logger.error(f"PostgreSQL destination error: {e}")
             return False
     
     def get_destination_info(self) -> Dict[str, Any]:
@@ -267,7 +263,8 @@ class PostgreSQLDestination(OutputDestination):
             'table_name': self.table_name,
             'create_table': self.create_table,
             'connection_configured': bool(self.connection_string),
-            'status': 'placeholder_implementation'
+            'status': 'stub_implementation',
+            'note': 'This is a stub implementation - add actual PostgreSQL logic'
         }
 
 

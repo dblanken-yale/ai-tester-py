@@ -47,8 +47,17 @@ The function entry point is now at `src/azure/function_app.py`, while maintainin
 
 ## Output Configuration
 
+### AI_TESTER_OUTPUT_DESTINATION_TYPE
+- **Description**: Type of output destination to use
+- **Default**: `console`
+- **Options**: 
+  - `json` - Write to JSON file
+  - `excel` - Write to Excel file
+  - `postgresql` - Write to PostgreSQL database
+  - `console` - Write to console/logs
+
 ### AI_TESTER_OUTPUT_FORMAT
-- **Description**: Format for output data
+- **Description**: Format for output data (legacy, use AI_TESTER_OUTPUT_DESTINATION_TYPE)
 - **Default**: `json`
 - **Options**: `json`, `excel`
 
@@ -81,6 +90,35 @@ The function entry point is now at `src/azure/function_app.py`, while maintainin
 - **Description**: Format for timestamp in filename
 - **Default**: `datetime`
 - **Options**: `datetime`, `date`, `time`, `unix`
+
+## PostgreSQL Output Configuration
+
+For writing results to a PostgreSQL database:
+
+### AI_TESTER_OUTPUT_POSTGRES_CONNECTION_STRING
+- **Description**: PostgreSQL connection string for output database
+- **Required**: Yes (when using postgresql output)
+- **Example**: `postgresql://username:password@hostname:5432/database_name`
+
+### AI_TESTER_OUTPUT_POSTGRES_TABLE
+- **Description**: Database table for storing test results
+- **Default**: `ai_results`
+- **Example**: `test_results`, `qa_output`
+
+### AI_TESTER_OUTPUT_POSTGRES_CREATE_TABLE
+- **Description**: Whether to create the table if it doesn't exist
+- **Default**: `true`
+- **Options**: `true`, `false`
+
+**PostgreSQL Output Example Configuration:**
+```bash
+AI_TESTER_OUTPUT_DESTINATION_TYPE=postgresql
+AI_TESTER_OUTPUT_POSTGRES_CONNECTION_STRING=postgresql://user:pass@localhost:5432/testdb
+AI_TESTER_OUTPUT_POSTGRES_TABLE=ai_test_results
+AI_TESTER_OUTPUT_POSTGRES_CREATE_TABLE=true
+```
+
+**Note**: PostgreSQL output is currently a stub implementation. See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for implementation details.
 
 ## Debug and Logging
 

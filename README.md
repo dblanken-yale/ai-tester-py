@@ -1,4 +1,4 @@
-# AI Tester
+AI Tester
 
 AI Tester automates the testing of AI endpoints using configurable question sets, exporting results to formats like Excel and JSON. It supports both command-line interface (CLI) and Azure Function execution modes.
 
@@ -73,6 +73,12 @@ You can export results in different formats:
   ```bash
   python test_questions.py <url> --format excel --outfile output.xlsx
   ```
+- **PostgreSQL Database:**
+  ```bash
+  python test_questions.py <url> --format postgresql \
+    --postgres-connection "postgresql://user:password@localhost:5432/db" \
+    --postgres-table "ai_test_results"
+  ```
 
 ## Debugging
 
@@ -140,8 +146,8 @@ See [DEVELOPER_GUIDE.md](DEVELOPER_GUIDE.md) for detailed instructions on adding
 - Custom output destinations (e.g., monitoring systems, dashboards, notifications)
 
 ### Available Extensions:
-- **Question Sources**: YAML, Dummy (testing), PostgreSQL
-- **Output Destinations**: JSON, Excel, PostgreSQL, Console
+- **Question Sources**: YAML, Dummy (testing), PostgreSQL (stub)
+- **Output Destinations**: JSON, Excel, PostgreSQL (stub), Console
 
 ## Testing Notes
 

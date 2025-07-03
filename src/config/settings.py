@@ -189,7 +189,9 @@ class AITesterConfig:
         output_format = getattr(args, 'format', 'json')
         output_file = getattr(args, 'outfile', None)
         
-        if output_format == 'excel':
+        if output_format == 'postgresql':
+            dest_type = 'postgresql'
+        elif output_format == 'excel':
             dest_type = 'excel'
         elif output_file and output_file.endswith('.json'):
             dest_type = 'json'
@@ -206,6 +208,20 @@ class AITesterConfig:
             include_timestamp_in_filename=getattr(args, 'include_timestamp', False),  # CLI default: no timestamp
             output_directory=getattr(args, 'output_dir', None)
         )
+
+        # Handle PostgreSQL-specific configuration
+        if dest_type == 'postgresql':
+            postgres_connection = getattr(args, 'postgres_connection', None)
+            postgres_table = getattr(args, 'postgres_table', 'ai_results')
+            
+            if not postgres_connection:
+                raise ValueError("PostgreSQL connection string is required when using postgresql format. Use --postgres-connection")
+            
+            output_destination.database = DatabaseConfig(
+                connection_string=postgres_connection,
+                table_name=postgres_table,
+                create_table=True
+            )
 
         # Processing configuration
         processing = ProcessingConfig(

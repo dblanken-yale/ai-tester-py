@@ -242,6 +242,123 @@ def _create_output_destination(self):
         )
 ```
 
+## Built-in PostgreSQL Output Destination
+
+AI Tester includes a built-in PostgreSQL output destination for storing test results in a database.
+
+### Using PostgreSQL Output
+
+#### CLI Usage
+
+```bash
+python test_questions.py https://api.example.com \
+  --format postgresql \
+  --postgres-connection "postgresql://user:password@localhost:5432/ai_test_db" \
+  --postgres-table "ai_test_results"
+```
+
+#### Azure Function Configuration
+
+Set these environment variables:
+
+```env
+AI_TESTER_OUTPUT_DESTINATION_TYPE=postgresql
+AI_TESTER_OUTPUT_POSTGRES_CONNECTION_STRING=postgresql://user:password@localhost:5432/ai_test_db
+AI_TESTER_OUTPUT_POSTGRES_TABLE=ai_test_results
+AI_TESTER_OUTPUT_POSTGRES_CREATE_TABLE=true
+```
+
+### PostgreSQL Table Schema
+
+The PostgreSQL destination will create a table with this structure (if `create_table=True`):
+
+```sql
+CREATE TABLE ai_test_results (
+    id SERIAL PRIMARY KEY,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    question TEXT NOT NULL,
+    answer TEXT,
+    citations JSONB,
+    result_metadata JSONB,
+    run_metadata JSONB,
+    endpoint_url TEXT,
+    test_run_id TEXT,
+    success BOOLEAN DEFAULT TRUE
+);
+```
+
+### Implementing PostgreSQL Output
+
+The PostgreSQL destination is currently a stub implementation. To add full functionality:
+
+1. **Install psycopg2**: `pip install psycopg2-binary`
+2. **Update the implementation** in `src/core/output_destinations.py`:
+
+```python
+def write_results(self, results: List[Dict[str, Any]], metadata: Optional[Dict[str, Any]] = None) -> bool:
+    """Write results to PostgreSQL database."""
+    try:
+        import psycopg2
+        connection = psycopg2.connect(self.connection_string)
+        cursor = connection.cursor()
+        
+        # Create table if needed
+        if self.create_table:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS {table_name} (
+                    id SERIAL PRIMARY KEY,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    question TEXT NOT NULL,
+                    answer TEXT,
+                    citations JSONB,
+                    result_metadata JSONB,
+                    run_metadata JSONB,
+                    endpoint_url TEXT,
+                    test_run_id TEXT,
+                    success BOOLEAN DEFAULT TRUE
+                )
+            """.format(table_name=self.table_name))
+        
+        # Insert results
+        for result in results:
+            cursor.execute("""
+                INSERT INTO {table_name} 
+                (question, answer, citations, result_metadata, run_metadata, endpoint_url, test_run_id, success)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """.format(table_name=self.table_name), (
+                result.get('question'),
+                result.get('answer'),
+                json.dumps(result.get('citations', [])),
+                json.dumps(result),
+                json.dumps(metadata),
+                metadata.get('endpoint_url') if metadata else None,
+                metadata.get('test_run_id') if metadata else None,
+                not bool(result.get('error'))
+            ))
+        
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return True
+        
+    except Exception as e:
+        logger.error(f"Failed to write to PostgreSQL: {e}")
+        return False
+```
+
+### Configuration Options
+
+- `connection_string`: PostgreSQL connection URL (required)
+- `table_name`: Table name for storing results (default: 'ai_results')
+- `create_table`: Whether to create the table if it doesn't exist (default: True)
+
+### Security Notes
+
+- Use environment variables for connection strings containing passwords
+- Consider using connection pooling for high-frequency testing
+- Ensure proper database permissions for the connecting user
+- Use SSL connections for production databases
+
 ## Reference Examples
 
 ### DummyQuestionSource Implementation

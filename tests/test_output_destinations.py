@@ -45,12 +45,12 @@ class TestOutputDestinationFactory:
         dest = OutputDestinationFactory.create_destination(
             'postgresql',
             connection_string='postgresql://user:pass@localhost/db',
-            table='results'
+            table_name='results'
         )
         
         assert isinstance(dest, PostgreSQLDestination)
         assert dest.connection_string == 'postgresql://user:pass@localhost/db'
-        assert dest.table == 'results'
+        assert dest.table_name == 'results'
     
     def test_create_unknown_destination_type(self):
         """Test creating an unknown destination type raises error."""
@@ -212,7 +212,7 @@ class TestConsoleDestination:
         dest = ConsoleDestination(format_type='json', detailed=True)
         info = dest.get_destination_info()
         
-        assert info['type'] == 'console_output'
+        assert info['type'] == 'console'
         assert info['format_type'] == 'json'
         assert info['detailed'] is True
 
@@ -228,28 +228,62 @@ class TestPostgreSQLDestination:
         )
         
         assert dest.connection_string == 'postgresql://user:pass@localhost/db'
-        assert dest.table == 'results'
+        assert dest.table_name == 'results'
+        assert dest.create_table is True
     
-    def test_write_results_not_implemented(self):
-        """Test that write_results is not implemented (placeholder)."""
+    def test_postgresql_destination_creation_with_options(self):
+        """Test creating a PostgreSQL destination with custom options."""
+        dest = PostgreSQLDestination(
+            'postgresql://user:pass@localhost/db',
+            table_name='custom_results',
+            create_table=False
+        )
+        
+        assert dest.connection_string == 'postgresql://user:pass@localhost/db'
+        assert dest.table_name == 'custom_results'
+        assert dest.create_table is False
+    
+    def test_postgresql_destination_requires_connection_string(self):
+        """Test that PostgreSQL destination requires connection string."""
+        with pytest.raises(ValueError, match="PostgreSQL connection string is required"):
+            PostgreSQLDestination('')
+    
+    def test_write_results_stub_implementation(self):
+        """Test that write_results returns True for stub implementation."""
         dest = PostgreSQLDestination(
             'postgresql://user:pass@localhost/db',
             'results'
         )
-        results = [{'question': 'Test?', 'response': 'Test'}]
+        results = [{'question': 'Test?', 'answer': 'Test answer'}]
+        metadata = {'test_run_id': '12345', 'endpoint_url': 'https://test.com'}
         
-        # This should return False since it's a placeholder implementation
+        # This should return True for the stub implementation
+        success = dest.write_results(results, metadata)
+        assert success is True
+    
+    def test_write_results_empty_list(self):
+        """Test writing empty results list."""
+        dest = PostgreSQLDestination(
+            'postgresql://user:pass@localhost/db',
+            'results'
+        )
+        results = []
+        
         success = dest.write_results(results)
-        assert success is False
+        assert success is True
     
     def test_get_destination_info(self):
         """Test getting destination information."""
         dest = PostgreSQLDestination(
             'postgresql://user:pass@localhost/db',
-            'results'
+            'custom_table',
+            create_table=False
         )
         info = dest.get_destination_info()
         
-        assert info['type'] == 'postgresql_database'
-        assert info['table'] == 'results'
-        assert 'description' in info
+        assert info['type'] == 'postgresql'
+        assert info['table_name'] == 'custom_table'
+        assert info['create_table'] is False
+        assert info['connection_configured'] is True
+        assert info['status'] == 'stub_implementation'
+        assert 'note' in info

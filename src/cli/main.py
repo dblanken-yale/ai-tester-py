@@ -31,11 +31,16 @@ def parse_args():
     
     # Output options
     parser.add_argument('--format', '-f',
-                        choices=['json', 'excel', 'console'],
+                        choices=['json', 'excel', 'console', 'postgresql'],
                         default='json',
                         help='Output format (default: json)')
     parser.add_argument('--outfile', '-o',
                         help='Output file path (default: console output)')
+    parser.add_argument('--postgres-connection',
+                        help='PostgreSQL connection string (required for postgresql format)')
+    parser.add_argument('--postgres-table',
+                        default='ai_results',
+                        help='PostgreSQL table name (default: ai_results)')
     
     # Processing options
     parser.add_argument('--debug', '-d',
