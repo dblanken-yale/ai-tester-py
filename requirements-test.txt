@@ -1,0 +1,18 @@
+# Testing dependencies
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pytest-mock>=3.10.0
+pytest-asyncio>=0.21.0
+
+# Dependencies for mocking Azure Functions
+azure-functions>=1.11.0
+
+# Dependencies for testing data handling
+pandas>=1.5.0
+openpyxl>=3.0.0
+
+# Dependencies for testing HTTP requests
+requests>=2.28.0
+
+# Dependencies for testing YAML processing
+PyYAML>=6.0
