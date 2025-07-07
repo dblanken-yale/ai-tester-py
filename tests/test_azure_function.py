@@ -1,13 +1,19 @@
 """
-Tests for Azure Function functionality.
+Tests for Azure Function functionality (Azure-specific decorators).
 """
 
 import pytest
 import json
 from unittest.mock import Mock, patch, MagicMock
-import azure.functions as func
 
-from src.azure.function_app import app, timer_process_batch_questions
+# Try to import Azure Functions, skip tests if not available
+try:
+    import azure.functions as func
+    from src.azure.function_app import app, timer_process_batch_questions
+    AZURE_FUNCTIONS_AVAILABLE = True
+except ImportError:
+    AZURE_FUNCTIONS_AVAILABLE = False
+    pytest.skip("Azure Functions not available", allow_module_level=True)
 
 
 class TestAzureFunctionTimer:

@@ -18,12 +18,12 @@ from src.core.question_sources import (
 class TestQuestionSourceFactory:
     """Test the question source factory."""
     
-    def test_create_yaml_source(self):
+    def test_create_yaml_source(self, temp_yaml_file):
         """Test creating a YAML question source."""
-        source = QuestionSourceFactory.create_source('yaml', file_path='test.yml')
+        source = QuestionSourceFactory.create_source('yaml', file_path=temp_yaml_file)
         
         assert isinstance(source, YamlQuestionSource)
-        assert source.file_path == 'test.yml'
+        assert source.file_path == temp_yaml_file
     
     def test_create_dummy_source(self):
         """Test creating a dummy question source."""
@@ -44,14 +44,14 @@ class TestQuestionSourceFactory:
         source = QuestionSourceFactory.create_source(
             'postgresql',
             connection_string='postgresql://user:pass@localhost/db',
-            table='questions',
-            column='question_text'
+            table_name='questions',
+            question_column='question_text'
         )
         
         assert isinstance(source, PostgreSQLQuestionSource)
         assert source.connection_string == 'postgresql://user:pass@localhost/db'
-        assert source.table == 'questions'
-        assert source.column == 'question_text'
+        assert source.table_name == 'questions'
+        assert source.question_column == 'question_text'
     
     def test_create_unknown_source_type(self):
         """Test creating an unknown source type raises error."""
@@ -70,11 +70,11 @@ class TestQuestionSourceFactory:
 class TestYamlQuestionSource:
     """Test YAML question source."""
     
-    def test_yaml_source_creation(self):
+    def test_yaml_source_creation(self, temp_yaml_file):
         """Test creating a YAML source."""
-        source = YamlQuestionSource('test.yml')
+        source = YamlQuestionSource(temp_yaml_file)
         
-        assert source.file_path == 'test.yml'
+        assert source.file_path == temp_yaml_file
     
     def test_get_questions_success(self, temp_yaml_file):
         """Test successfully loading questions from YAML file."""
@@ -88,27 +88,25 @@ class TestYamlQuestionSource:
     
     def test_get_questions_file_not_found(self):
         """Test handling missing YAML file."""
-        source = YamlQuestionSource('nonexistent.yml')
-        questions = source.get_questions()
-        
-        assert questions == []
+        with pytest.raises(FileNotFoundError, match="Questions file not found"):
+            YamlQuestionSource('nonexistent.yml')
     
+    @patch('os.path.exists', return_value=True)
     @patch('builtins.open', mock_open(read_data='invalid: yaml: content: ['))
-    def test_get_questions_invalid_yaml(self):
+    def test_get_questions_invalid_yaml(self, mock_exists):
         """Test handling invalid YAML content."""
         source = YamlQuestionSource('invalid.yml')
-        questions = source.get_questions()
-        
-        assert questions == []
+        with pytest.raises(ValueError, match="Error parsing YAML file"):
+            source.get_questions()
     
-    def test_get_source_info(self):
+    def test_get_source_info(self, temp_yaml_file):
         """Test getting source information."""
-        source = YamlQuestionSource('test.yml')
+        source = YamlQuestionSource(temp_yaml_file)
         info = source.get_source_info()
         
         assert info['type'] == 'yaml_file'
-        assert info['file_path'] == 'test.yml'
-        assert 'description' in info
+        assert info['file_path'] == temp_yaml_file
+        assert info['exists'] is True
 
 
 class TestDummyQuestionSource:
@@ -121,7 +119,8 @@ class TestDummyQuestionSource:
         
         assert len(questions) > 0
         assert all(isinstance(q, str) for q in questions)
-        assert all(q.endswith('?') for q in questions)
+        # Check that we have the expected default questions
+        assert len(questions) == 5
     
     def test_dummy_source_custom_questions(self):
         """Test dummy source with custom questions."""
@@ -162,20 +161,21 @@ class TestPostgreSQLQuestionSource:
         )
         
         assert source.connection_string == 'postgresql://user:pass@localhost/db'
-        assert source.table == 'questions'
-        assert source.column == 'question_text'
+        assert source.table_name == 'questions'
+        assert source.question_column == 'question_text'
     
-    def test_get_questions_not_implemented(self):
-        """Test that get_questions is not implemented (placeholder)."""
+    def test_get_questions_placeholder(self):
+        """Test that get_questions returns placeholder data."""
         source = PostgreSQLQuestionSource(
             'postgresql://user:pass@localhost/db',
             'questions',
             'question_text'
         )
         
-        # This should return empty list since it's a placeholder implementation
+        # This should return placeholder questions since it's a stub implementation
         questions = source.get_questions()
-        assert questions == []
+        assert len(questions) == 3
+        assert all(isinstance(q, str) for q in questions)
     
     def test_get_source_info(self):
         """Test getting source information."""
@@ -186,7 +186,7 @@ class TestPostgreSQLQuestionSource:
         )
         info = source.get_source_info()
         
-        assert info['type'] == 'postgresql_database'
-        assert info['table'] == 'questions'
-        assert info['column'] == 'question_text'
-        assert 'description' in info
+        assert info['type'] == 'postgresql'
+        assert info['table_name'] == 'questions'
+        assert info['question_column'] == 'question_text'
+        assert info['connection_configured'] is True

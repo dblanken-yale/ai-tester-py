@@ -15,10 +15,11 @@ class TestCLIArguments:
     
     def test_parse_args_minimal(self):
         """Test parsing minimal required arguments."""
-        args = parse_args(['https://test.example.com'])
+        with patch.object(sys, 'argv', ['test_cli.py', 'https://test.example.com']):
+            args = parse_args()
         
         assert args.url == 'https://test.example.com'
-        assert args.questions == 'questions.yml'
+        assert args.questions == './questions.yml'
         assert args.source_type == 'yaml'
         assert args.format == 'json'
         assert args.outfile is None
@@ -27,7 +28,8 @@ class TestCLIArguments:
     
     def test_parse_args_full(self):
         """Test parsing all possible arguments."""
-        args = parse_args([
+        with patch.object(sys, 'argv', [
+            'test_cli.py',
             'https://test.example.com',
             '--questions', 'custom.yml',
             '--source-type', 'dummy',
@@ -35,7 +37,8 @@ class TestCLIArguments:
             '--outfile', 'results.xlsx',
             '--debug',
             '--endpoint', '/api/test'
-        ])
+        ]):
+            args = parse_args()
         
         assert args.url == 'https://test.example.com'
         assert args.questions == 'custom.yml'
@@ -47,14 +50,16 @@ class TestCLIArguments:
     
     def test_parse_args_short_flags(self):
         """Test parsing with short flag options."""
-        args = parse_args([
+        with patch.object(sys, 'argv', [
+            'test_cli.py',
             'https://test.example.com',
             '-q', 'test.yml',
             '-f', 'excel',
             '-o', 'output.xlsx',
             '-d',
             '-e', '/api'
-        ])
+        ]):
+            args = parse_args()
         
         assert args.url == 'https://test.example.com'
         assert args.questions == 'test.yml'
@@ -65,23 +70,27 @@ class TestCLIArguments:
     
     def test_parse_args_legacy_filename(self):
         """Test parsing with legacy filename argument."""
-        args = parse_args([
+        with patch.object(sys, 'argv', [
+            'test_cli.py',
             'https://test.example.com',
             '--filename', 'legacy_output.json'
-        ])
+        ]):
+            args = parse_args()
         
         assert args.url == 'https://test.example.com'
         assert args.filename == 'legacy_output.json'
     
     def test_parse_args_help(self):
         """Test that help argument works."""
-        with pytest.raises(SystemExit):
-            parse_args(['--help'])
+        with patch.object(sys, 'argv', ['test_cli.py', '--help']):
+            with pytest.raises(SystemExit):
+                parse_args()
     
     def test_parse_args_missing_url(self):
         """Test parsing with missing required URL."""
-        with pytest.raises(SystemExit):
-            parse_args([])
+        with patch.object(sys, 'argv', ['test_cli.py']):
+            with pytest.raises(SystemExit):
+                parse_args()
 
 
 class TestCLIMain:
@@ -99,9 +108,9 @@ class TestCLIMain:
         test_args = ['test_questions.py', 'https://test.example.com']
         
         with patch.object(sys, 'argv', test_args):
-            result = main()
+            main()
         
-        assert result == 0
+        # Success case doesn't raise SystemExit
         mock_service.process_questions.assert_called_once()
     
     @patch('src.cli.main.QuestionProcessingService')
@@ -115,7 +124,9 @@ class TestCLIMain:
         test_args = ['test_questions.py', 'https://test.example.com']
         
         with patch.object(sys, 'argv', test_args):
-            result = main()
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            result = exc_info.value.code
         
         assert result == 1
         mock_service.process_questions.assert_called_once()
@@ -129,7 +140,9 @@ class TestCLIMain:
         test_args = ['test_questions.py', 'https://test.example.com']
         
         with patch.object(sys, 'argv', test_args):
-            result = main()
+            with pytest.raises(SystemExit) as exc_info:
+                main()
+            result = exc_info.value.code
         
         assert result == 1
     
@@ -143,9 +156,9 @@ class TestCLIMain:
         test_args = ['test_questions.py', 'https://test.example.com', '--debug']
         
         with patch.object(sys, 'argv', test_args):
-            result = main()
+            main()
         
-        assert result == 0
+        # Success case doesn't raise SystemExit
         # Verify config was created with debug=True
         call_args = mock_service_class.call_args[0][0]
         assert call_args.debug is True
@@ -168,10 +181,9 @@ class TestCLIMain:
         ]
         
         with patch.object(sys, 'argv', test_args):
-            result = main()
+            main()
         
-        assert result == 0
-        
+        # Success case doesn't raise SystemExit
         # Verify config was created with custom options
         call_args = mock_service_class.call_args[0][0]
         assert call_args.base_url == 'https://custom.example.com'
@@ -195,10 +207,9 @@ class TestCLIMain:
         ]
         
         with patch.object(sys, 'argv', test_args):
-            result = main()
+            main()
         
-        assert result == 0
-        
+        # Success case doesn't raise SystemExit
         # Verify legacy filename was used
         call_args = mock_service_class.call_args[0][0]
         assert call_args.output_destination.file_path == 'legacy_output.json'
@@ -223,7 +234,9 @@ class TestCLIIntegration:
             source_type='yaml',
             format='json',
             outfile='output.json',
-            filename=None
+            filename=None,
+            postgres_connection=None,
+            postgres_table='ai_results'
         )
         
         # Test config creation
@@ -231,6 +244,7 @@ class TestCLIIntegration:
             with patch.object(sys, 'argv', ['test_questions.py']):
                 main()
         
+        # Success case doesn't raise SystemExit
         # Verify service was called with correct config
         mock_service_class.assert_called_once()
         config = mock_service_class.call_args[0][0]

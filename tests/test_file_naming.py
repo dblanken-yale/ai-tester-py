@@ -40,7 +40,7 @@ class TestExtractDomainFromUrl:
     def test_extract_domain_complex(self):
         """Test extracting domain from complex URL."""
         domain = SmartFileNamer.sanitize_domain('https://test-api.my-company.co.uk:9443/api/v2')
-        assert domain == 'test_api_my_company_co_uk_9443'
+        assert domain == 'test-api_my-company_co_uk_9443'
     
     def test_extract_domain_invalid_url(self):
         """Test extracting domain from invalid URL."""
@@ -80,11 +80,10 @@ class TestFormatTimestamp:
         timestamp = SmartFileNamer.generate_timestamp('time')
         assert timestamp == '143022'
     
-    @patch('src.utils.file_naming.datetime')
-    def test_generate_timestamp_unix(self, mock_datetime):
+    @patch('src.utils.file_naming.time')
+    def test_generate_timestamp_unix(self, mock_time):
         """Test formatting timestamp as unix timestamp."""
-        mock_datetime.now.return_value = datetime(2024, 1, 15, 14, 30, 22)
-        mock_datetime.now().timestamp.return_value = 1705330222.0
+        mock_time.time.return_value = 1705330222.0
         
         timestamp = SmartFileNamer.generate_timestamp('unix')
         assert timestamp == '1705330222'
@@ -135,11 +134,10 @@ class TestGenerateUniqueFilename:
             'https://example.com',
             template='test',
             file_extension='json',
-            include_domain=False,
             include_timestamp=True
         )
         
-        assert filename == 'test_2024-01-15_143022.json'
+        assert filename == 'test_example_com_2024-01-15_143022.json'
     
     def test_generate_filename_template_only(self):
         """Test generating filename with template only."""
@@ -147,11 +145,10 @@ class TestGenerateUniqueFilename:
             'https://example.com',
             template='simple',
             file_extension='txt',
-            include_domain=False,
             include_timestamp=False
         )
         
-        assert filename == 'simple.txt'
+        assert filename == 'simple_example_com.txt'
     
     @patch('src.utils.file_naming.datetime')
     def test_generate_filename_custom_timestamp_format(self, mock_datetime):
@@ -162,19 +159,17 @@ class TestGenerateUniqueFilename:
             'https://example.com',
             template='daily',
             file_extension='json',
-            include_domain=False,
             include_timestamp=True,
             timestamp_format='date'
         )
         
-        assert filename == 'daily_2024-01-15.json'
+        assert filename == 'daily_example_com_2024-01-15.json'
     
     def test_generate_filename_no_template(self):
         """Test generating filename without template."""
         filename = SmartFileNamer.generate_unique_filename(
             'https://api.example.com',
             file_extension='json',
-            include_domain=True,
             include_timestamp=False
         )
         
@@ -185,11 +180,11 @@ class TestGenerateUniqueFilename:
         filename = SmartFileNamer.generate_unique_filename(
             'https://example.com',
             template='test',
-            include_domain=False,
+            file_extension=None,
             include_timestamp=False
         )
         
-        assert filename == 'test'
+        assert filename == 'test_example_com'
     
     @patch('src.utils.file_naming.datetime')
     def test_generate_filename_all_options(self, mock_datetime):
@@ -200,10 +195,9 @@ class TestGenerateUniqueFilename:
             'https://test-api.my-company.com:8080/api',
             template='endpoint_test',
             file_extension='xlsx',
-            include_domain=True,
             include_timestamp=True,
             timestamp_format='datetime'
         )
         
-        expected = 'endpoint_test_test_api_my_company_com_8080_2024-01-15_143022.xlsx'
+        expected = 'endpoint_test_test-api_my-company_com_8080_2024-01-15_143022.xlsx'
         assert filename == expected

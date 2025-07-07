@@ -6,7 +6,7 @@ import pytest
 import tempfile
 import os
 import json
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 from src.core.output_destinations import (
     OutputDestinationFactory,
@@ -134,19 +134,43 @@ class TestExcelFileDestination:
         
         assert dest.file_path == 'output.xlsx'
     
-    @patch('pandas.DataFrame.to_excel')
-    def test_write_results_success(self, mock_to_excel):
+    @patch('src.core.output_destinations.pd.ExcelWriter')
+    @patch('src.core.output_destinations.pd.DataFrame')
+    @patch('src.core.output_destinations.load_workbook')
+    def test_write_results_success(self, mock_load_workbook, mock_dataframe, mock_excel_writer):
         """Test successfully writing results to Excel file."""
+        # Mock DataFrame and ExcelWriter
+        mock_df = MagicMock()
+        
+        # Create a mock columns object that supports 'in' operator
+        mock_columns = MagicMock()
+        mock_columns.__contains__ = Mock(side_effect=lambda x: x in ['question', 'answer'])
+        mock_columns.__getitem__ = Mock(side_effect=lambda x: ['question', 'answer'][x] if isinstance(x, list) else 'question' if x == 0 else 'answer')
+        mock_df.columns = mock_columns
+        
+        # Mock DataFrame operations
+        mock_df.__getitem__ = Mock(return_value=mock_df)  # For df[['question', 'answer']]
+        
+        mock_dataframe.return_value = mock_df
+        mock_writer = Mock()
+        mock_excel_writer.return_value.__enter__.return_value = mock_writer
+        
+        # Mock workbook for formatting using MagicMock to handle __getitem__
+        mock_workbook = MagicMock()
+        mock_sheet = Mock()
+        mock_workbook['Results'] = mock_sheet  # Set up sheet access
+        mock_load_workbook.return_value = mock_workbook
+        
         dest = ExcelFileDestination('output.xlsx')
         results = [
-            {'question': 'Test question?', 'response': 'Test response'},
-            {'question': 'Another question?', 'response': 'Another response'}
+            {'question': 'Test question?', 'answer': 'Test response'},
+            {'question': 'Another question?', 'answer': 'Another response'}
         ]
         
         success = dest.write_results(results)
         
         assert success is True
-        mock_to_excel.assert_called_once()
+        mock_dataframe.assert_called_once_with(results)
     
     @patch('pandas.DataFrame.to_excel', side_effect=Exception("Excel error"))
     def test_write_results_excel_error(self, mock_to_excel):

@@ -75,7 +75,7 @@ class SmartFileNamer:
     def generate_unique_filename(
         base_url: str,
         template: Optional[str] = None,
-        file_extension: str = 'json',
+        file_extension: Optional[str] = 'json',
         include_timestamp: bool = True,
         timestamp_format: str = 'datetime'
     ) -> str:
@@ -113,9 +113,11 @@ class SmartFileNamer:
             timestamp = SmartFileNamer.generate_timestamp(timestamp_format)
             parts.append(timestamp)
         
-        # Join parts and add extension
+        # Join parts and add extension if provided
         filename = '_'.join(parts)
-        return f"{filename}.{file_extension}"
+        if file_extension:
+            return f"{filename}.{file_extension}"
+        return filename
     
     @staticmethod
     def generate_output_path(
@@ -190,3 +192,24 @@ class SmartFileNamer:
             result = result.replace(placeholder, value)
         
         return result
+
+
+# Convenience functions for backward compatibility
+def generate_smart_filename(base_url: str, file_extension: str, template: str = 'results') -> str:
+    """
+    Convenience function to generate smart filename.
+    
+    Args:
+        base_url: The URL being tested
+        file_extension: File extension
+        template: Template name
+        
+    Returns:
+        Generated filename
+    """
+    return SmartFileNamer.generate_unique_filename(
+        base_url=base_url,
+        template=template,
+        file_extension=file_extension,
+        include_timestamp=True
+    )
