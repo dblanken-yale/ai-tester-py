@@ -1,0 +1,18 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "AI_TESTER_BASE_URL": "https://your-ai-endpoint.example.com",
+    "AI_TESTER_SCHEDULE": "0 */5 * * * *",
+    "AI_TESTER_QUESTIONS_SOURCE_TYPE": "yaml",
+    "AI_TESTER_QUESTIONS_FILE": "./questions.yml",
+    "AI_TESTER_OUTPUT_DESTINATION_TYPE": "json",
+    "AI_TESTER_OUTPUT_TEMPLATE": "results",
+    "AI_TESTER_OUTPUT_DIRECTORY": "./outputs",
+    "AI_TESTER_INCLUDE_DOMAIN": "true",
+    "AI_TESTER_INCLUDE_TIMESTAMP": "true",
+    "AI_TESTER_JSON_PRETTY_PRINT": "true",
+    "AI_TESTER_DEBUG": "false"
+  }
+}
