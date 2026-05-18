@@ -2,23 +2,62 @@
 
 ## What is this?
 
-This is a small python script to send multiple questions to an AI endpoint and attempt to retrieve the responses for review.
+This is a small Python tool that sends a list of questions to an AI service and collects the responses — including any source citations — for review.
+
+## Prerequisites
+
+Before you begin, you need the following installed on your computer:
+
+- **Python 3.8 or higher** — [Download Python](https://www.python.org/downloads/)
+- **Git** — [Download Git](https://git-scm.com/downloads/)
+
+If you are unsure whether these are installed, open a terminal and run:
+
+```
+python --version
+git --version
+```
+
+Both commands should print a version number. If you see an error, install the missing tool first.
 
 ## How to install?
 
-- Clone the repository locally
-- Inside of the directory, run `./install.sh`
-- Make any modifications to questions inside of the [questions.yml](https://github.com/dblanken-yale/ai-tester-py/blob/main/questions.yml) file
-- Run the script: `python test-questions.py <url>`
-- To capture the output, run `python test-questions.py <url> > output.json`
-  - Where `<url>` is the endpoint to test against
-- Usage can be seen by running `python test-questions.py -h`
+1. **Download the project.** In your terminal, run:
 
-## Can I output to different formats?
+   ```bash
+   git clone https://github.com/dblanken-yale/ai-tester-py.git
+   cd ai-tester-py
+   ```
 
-Yes, here is how:
+2. **Install dependencies.** This installs the Python libraries the tool needs:
 
-### JSON
+   ```bash
+   ./install.sh
+   ```
+
+3. **Add your questions.** Open `questions.yml` in any text editor (Notepad on Windows, TextEdit on Mac, or VS Code) and replace the example questions with your own. Each question goes on its own line starting with a dash and a space (`- `).
+
+4. **Run the tool.** Replace `<url>` with the address of the AI service you are testing:
+
+   ```bash
+   python test-questions.py <url>
+   ```
+
+   The tool will print results to your screen. See the sections below to save them to a file.
+
+> **What is the URL?** This is the web address of the AI service you want to test. It is typically provided by your team or the service documentation and should start with `https://`.
+
+All available options can be seen by running:
+
+```bash
+python test-questions.py -h
+```
+
+## Saving your results
+
+By default the tool prints results to your screen. To save them to a file, use one of the options below.
+
+### JSON (printed to screen, redirected to a file)
 
 ```bash
 python test-questions.py <url> > output.json
@@ -43,7 +82,3 @@ You can enable debug mode to see more information; currently you'll be able to s
 ```bash
 python test-questions.py <url> --debug
 ```
-
-## How does it work?
-
-This will attempt to hit an endpoint with a multitude of questions stored inside of the questions.yml file, and output the question, citations, and response into a readable output.
